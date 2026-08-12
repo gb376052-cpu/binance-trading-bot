@@ -13,33 +13,30 @@ st.set_page_config(
 )
 
 st.title("📈 Binance Futures Testnet Trading Bot")
-st.markdown("Execute Market & Limit orders securely from your app.")
 
-# --- Helper Functions for Binance API (Directly in app.py) ---
+# --- Sidebar for User API Keys ---
+st.sidebar.header("🔑 Binance API Credentials")
+user_api_key = st.sidebar.text_input("API Key", type="password")
+user_secret_key = st.sidebar.text_input("Secret Key", type="password")
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("Don't have keys? Get them from [Binance Futures Testnet](https://testnet.binancefuture.com/)")
+
 BASE_URL = "https://testnet.binancefuture.com"
-
-def get_secreta():
-    # Secrets se API keys lena
-    try:
-        api_key = st.secrets["BINANCE_API_KEY"]
-        secret_key = st.secrets["BINANCE_SECRET_KEY"]
-        return api_key, secret_key
-    except Exception:
-        return None, None
 
 def send_signed_request(method, path, params=None):
     if params is None:
         params = {}
     
-    api_key, secret_key = get_secreta()
-    if not api_key or not secret_key:
-        return {"error": "API Keys not found in Streamlit Secrets!"}
+    # Check if user entered keys
+    if not user_api_key or not user_secret_key:
+        return {"error": "Please enter your Binance API Key and Secret Key in the sidebar!"}
 
     params['timestamp'] = int(time.time() * 1000)
     query_string = urlencode(params)
     
     signature = hmac.new(
-        secret_key.encode('utf-8'),
+        user_secret_key.encode('utf-8'),
         query_string.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
@@ -47,7 +44,7 @@ def send_signed_request(method, path, params=None):
     params['signature'] = signature
     
     headers = {
-        'X-MBX-APIKEY': api_key
+        'X-MBX-APIKEY': user_api_key
     }
     
     url = f"{BASE_URL}{path}?{urlencode(params)}"
@@ -81,7 +78,9 @@ with st.form("trading_form"):
     submitted = st.form_submit_button("Execute Order")
 
     if submitted:
-        if not symbol:
+        if not user_api_key or not user_secret_key:
+            st.error("⚠️ Please enter your API Key and Secret Key in the sidebar first!")
+        elif not symbol:
             st.error("Please enter a valid symbol.")
         else:
             params = {
